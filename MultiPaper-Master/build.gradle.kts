@@ -11,20 +11,20 @@ repositories {
         url = uri("https://oss.sonatype.org/content/repositories/snapshots")
     }
     maven {
-        url = uri("https://repo.velocitypowered.com/snapshots/")
+        url = uri("https://repo.papermc.io/repository/maven-public/")
     }
 }
 
 dependencies {
     implementation(project(":MultiPaper-MasterMessagingProtocol"))
     implementation("org.jetbrains:annotations:22.0.0")
-    implementation("org.json:json:20211205")
-    implementation("org.yaml:snakeyaml:1.33")
-    implementation("io.netty:netty-all:4.1.75.Final")
+    implementation("org.json:json:20220320")
+    implementation("org.yaml:snakeyaml:2.0")
+    implementation("io.netty:netty-all:4.1.86.Final")
     implementation("se.llbit:jo-nbt:1.3.0")
-    compileOnly("net.md-5:bungeecord-api:1.16-R0.4")
-    compileOnly("com.velocitypowered:velocity-api:3.0.1")
-    annotationProcessor("com.velocitypowered:velocity-api:3.0.1")
+    compileOnly("net.md-5:bungeecord-api:1.20-SNAPSHOT")
+    compileOnly("com.velocitypowered:velocity-api:3.2.0-SNAPSHOT")
+    annotationProcessor("com.velocitypowered:velocity-api:3.2.0-SNAPSHOT")
 }
 
 tasks.jar {
