@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Tue, 18 Jan 2022 11:15:07 +1000
+Subject: [PATCH] Add temporary debug logs to check if a chunk can be not fully
+ loaded
+
+
+diff --git a/src/main/java/net/minecraft/server/level/ServerChunkCache.java b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
+index 83ed70f4f3729e634c8538790d91a648b8806fa7..ac4f47888c41f7781d80de86309218f50a27be6a 100644
+--- a/src/main/java/net/minecraft/server/level/ServerChunkCache.java
++++ b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
+@@ -618,6 +618,14 @@ public class ServerChunkCache extends ChunkSource {
+                     // Paper end - optimise chunk tick iteration
+                     ChunkPos chunkcoordintpair = chunk1.getPos();
+ 
++                if (!chunk1.loaded) {
++                    LOGGER.warn(chunk1 + " isn't loaded!");
++                }
++
++                if (getVisibleChunkIfPresent(chunk1.getPos().longKey) == null) {
++                    LOGGER.warn(chunk1 + " isn't in the visible chunks!");
++                }
++
+                 // MultiPaper start - Don't tick this chunk if we don't own it
+                 boolean isTicking = chunkMap.getDistanceManager().inEntityTickingRange(chunkcoordintpair.longKey);
+                 if (isTicking && !holder.newChunkHolder.hasExternalLockRequest) MultiPaper.lockChunk(holder.newChunkHolder);

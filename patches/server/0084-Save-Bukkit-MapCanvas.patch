@@ -1,0 +1,20 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 18 Feb 2022 21:58:13 +1000
+Subject: [PATCH] Save Bukkit MapCanvas'
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/map/CraftMapCanvas.java b/src/main/java/org/bukkit/craftbukkit/map/CraftMapCanvas.java
+index ff59f759669620795ef355c988b664bdcda39f52..17dedb2c0e63caafff574a9a1abc7d65bd255594 100644
+--- a/src/main/java/org/bukkit/craftbukkit/map/CraftMapCanvas.java
++++ b/src/main/java/org/bukkit/craftbukkit/map/CraftMapCanvas.java
+@@ -63,7 +63,8 @@ public class CraftMapCanvas implements MapCanvas {
+             return;
+         if (this.buffer[y * 128 + x] != color) {
+             this.buffer[y * 128 + x] = color;
+-            this.mapView.worldMap.setColorsDirty(x, y);
++            mapView.worldMap.setColor(x, y, color); // MultiPaper - save this map
++            mapView.worldMap.setColorsDirty(x, y);
+         }
+     }
+ 

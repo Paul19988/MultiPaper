@@ -1,0 +1,196 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 25 Nov 2021 15:19:41 +1000
+Subject: [PATCH] Sync level.dat
+
+
+diff --git a/src/main/java/net/minecraft/world/level/storage/LevelStorageSource.java b/src/main/java/net/minecraft/world/level/storage/LevelStorageSource.java
+index 399da9d43aefbb95897df4697860d5bce5317152..b6db985ba30de7ffbbba77bd5a7cddb6890bb5a0 100644
+--- a/src/main/java/net/minecraft/world/level/storage/LevelStorageSource.java
++++ b/src/main/java/net/minecraft/world/level/storage/LevelStorageSource.java
+@@ -79,6 +79,7 @@ import net.minecraft.world.level.validation.DirectoryValidator;
+ import net.minecraft.world.level.validation.ForbiddenSymlinkInfo;
+ import net.minecraft.world.level.validation.PathAllowList;
+ import org.slf4j.Logger;
++import puregero.multipaper.MultiPaper;
+ 
+ public class LevelStorageSource {
+ 
+@@ -283,36 +284,14 @@ public class LevelStorageSource {
+         return 19133;
+     }
+ 
+-    static CompoundTag readLevelDataTagRaw(Path path) throws IOException {
+-        return NbtIo.readCompressed(path, NbtAccounter.create(104857600L));
+-    }
+-
+-    static Dynamic<?> readLevelDataTagFixed(Path path, DataFixer dataFixer) throws IOException {
+-        CompoundTag nbttagcompound = LevelStorageSource.readLevelDataTagRaw(path);
+-        CompoundTag nbttagcompound1 = nbttagcompound.getCompound("Data");
+-        int i = NbtUtils.getDataVersion(nbttagcompound1, -1); final int version = i; // Paper - obfuscation helpers
+-        Dynamic<?> dynamic = DataFixTypes.LEVEL.updateToCurrentVersion(dataFixer, new Dynamic(NbtOps.INSTANCE, nbttagcompound1), i);
+-        Dynamic<?> dynamic1 = dynamic.get("Player").orElseEmptyMap();
+-        Dynamic<?> dynamic2 = LevelStorageSource.dank(dynamic1, version); // Paper
+-
+-        dynamic = dynamic.set("Player", dynamic2);
+-        Dynamic<?> dynamic3 = dynamic.get("WorldGenSettings").orElseEmptyMap();
+-        Dynamic<?> dynamic4 = DataFixTypes.WORLD_GEN_SETTINGS.updateToCurrentVersion(dataFixer, dynamic3, i);
+-
+-        dynamic = dynamic.set("WorldGenSettings", dynamic4);
+-        return dynamic;
+-    }
+-
+-    // Paper start
+-    private static <T> Dynamic<T> dank(final Dynamic<T> input, final int version) {
+-        return new Dynamic<>(input.getOps(), (T) ca.spottedleaf.dataconverter.minecraft.MCDataConverter.convertTag(ca.spottedleaf.dataconverter.minecraft.datatypes.MCTypeRegistry.PLAYER, (CompoundTag)input.getValue(), version, net.minecraft.SharedConstants.getCurrentVersion().getDataVersion().getVersion()));
+-    }
+-    // Paper end
+-
+-    private LevelSummary readLevelSummary(LevelStorageSource.LevelDirectory save, boolean locked) {
+-        Path path = save.dataFile();
++    @Nullable
++    <T> T readLevelData(LevelStorageSource.LevelDirectory levelSave, BiFunction<Path, DataFixer, T> levelDataParser) {
++        if (false && !Files.exists(levelSave.path(), new LinkOption[0])) { // MultiPaper
++            return null;
++        } else {
++            Path path = levelSave.dataFile();
+ 
+-        if (Files.exists(path, new LinkOption[0])) {
++        if (true || Files.exists(path, new LinkOption[0])) { // MultiPaper
+             try {
+                 if (Files.isSymbolicLink(path)) {
+                     List<ForbiddenSymlinkInfo> list = this.worldDirValidator.validateSymlink(path);
+@@ -346,20 +325,40 @@ public class LevelStorageSource {
+     private static long getFileModificationTime(LevelStorageSource.LevelDirectory save) {
+         Instant instant = LevelStorageSource.getFileModificationTime(save.dataFile());
+ 
+-        if (instant == null) {
+-            instant = LevelStorageSource.getFileModificationTime(save.oldDataFile());
+-        }
++            try {
++                nbttagcompound = MultiPaper.readLevel(path.toFile().getParentFile().getName()); // NbtIo.readCompressed(path.toFile()); // MultiPaper
++            } catch (IOException ioexception) {
++                throw new UncheckedIOException(ioexception);
++            }
+ 
+-        return instant == null ? -1L : instant.toEpochMilli();
+-    }
++            // MultiPaper start
++            if (nbttagcompound == null) {
++                LOGGER.info("A new level.dat is being generated at " + path.toFile().getPath() + ", forcing it to save");
++                MultiPaper.levelDatNeedsSaving = true;
++                return null;
++            }
++            // MultiPaper end
+ 
+-    @Nullable
+-    static Instant getFileModificationTime(Path path) {
+-        try {
+-            return Files.getLastModifiedTime(path).toInstant();
+-        } catch (IOException ioexception) {
+-            return null;
+-        }
++            CompoundTag nbttagcompound1 = nbttagcompound.getCompound("Data");
++            CompoundTag nbttagcompound2 = nbttagcompound1.contains("Player", 10) ? nbttagcompound1.getCompound("Player") : null;
++
++            nbttagcompound1.remove("Player");
++            int i = NbtUtils.getDataVersion(nbttagcompound1, -1);
++            Dynamic<?> dynamic = DataFixTypes.LEVEL.updateToCurrentVersion(datafixer, new Dynamic(ops, nbttagcompound1), i);
++            DataResult dataresult = LevelStorageSource.readWorldGenSettings(dynamic, datafixer, i);
++            Logger logger = LevelStorageSource.LOGGER;
++
++            Objects.requireNonNull(logger);
++            WorldGenSettings generatorsettings = (WorldGenSettings) dataresult.getOrThrow(false, Util.prefix("WorldGenSettings: ", logger::error));
++            LevelVersion levelversion = LevelVersion.parse(dynamic);
++            LevelSettings worldsettings = LevelSettings.parse(dynamic, dataConfiguration);
++            WorldDimensions.Complete worlddimensions_b = generatorsettings.dimensions().bake(dimensionOptionsRegistry);
++            Lifecycle lifecycle1 = worlddimensions_b.lifecycle().add(lifecycle);
++            PrimaryLevelData worlddataserver = PrimaryLevelData.parse(dynamic, datafixer, i, nbttagcompound2, worldsettings, levelversion, worlddimensions_b.specialWorldProperty(), generatorsettings.options(), lifecycle1);
++            worlddataserver.pdc = nbttagcompound1.get("BukkitValues"); // CraftBukkit - Add PDC to world
++
++            return Pair.of(worlddataserver, worlddimensions_b);
++        };
+     }
+ 
+     LevelSummary makeLevelSummary(Dynamic<?> dynamic, LevelStorageSource.LevelDirectory save, boolean locked) {
+@@ -391,6 +390,7 @@ public class LevelStorageSource {
+ 
+     @Nullable
+     private static Tag readLightweightData(Path path) throws IOException {
++        if (true) return MultiPaper.readLevel(path.toFile().getParentFile().getName()); // MultiPaper
+         SkipFields skipfields = new SkipFields(new FieldSelector[]{new FieldSelector("Data", CompoundTag.TYPE, "Player"), new FieldSelector("Data", CompoundTag.TYPE, "WorldGenSettings")});
+ 
+         NbtIo.parseCompressed(path, skipfields, NbtAccounter.create(104857600L));
+@@ -611,7 +611,14 @@ public class LevelStorageSource {
+             Path path = this.levelDirectory.path();
+ 
+             try {
+-                Path path1 = Files.createTempFile(path, "level", ".dat");
++                // MultiPaper start
++                if (true) {
++                    MultiPaper.writeLevel(file.getName(), nbttagcompound2);
++                    return;
++                }
++                // MultiPaper end
++
++                File file1 = File.createTempFile("level", ".dat", file);
+ 
+                 NbtIo.writeCompressed(nbt, path1);
+                 Path path2 = this.levelDirectory.oldDataFile();
+diff --git a/src/main/java/puregero/multipaper/MultiPaper.java b/src/main/java/puregero/multipaper/MultiPaper.java
+index 37c60e4235ccb8efd2f63c04d9470011f4c75d8e..7b7d508d8311f09dd3e15964fef0ee8e34ce6898 100644
+--- a/src/main/java/puregero/multipaper/MultiPaper.java
++++ b/src/main/java/puregero/multipaper/MultiPaper.java
+@@ -17,6 +17,8 @@ import net.minecraft.world.level.chunk.ChunkAccess;
+ import net.minecraft.world.level.chunk.ChunkStatus;
+ import net.minecraft.world.level.chunk.ImposterProtoChunk;
+ import net.minecraft.world.level.chunk.LevelChunk;
++import org.apache.logging.log4j.LogManager;
++import org.apache.logging.log4j.Logger;
+ import org.bukkit.Bukkit;
+ import org.bukkit.Chunk;
+ import org.bukkit.World;
+@@ -57,6 +59,9 @@ import java.util.zip.InflaterInputStream;
+ public class MultiPaper {
+ 
+     private static MultiPaperConnection multiPaperConnection = null;
++    private static final Logger LOGGER = LogManager.getLogger(MultiPaper.class.getSimpleName());
++    public static boolean levelDatNeedsSaving = false;
++
+     public static MultiPaperConnection getConnection() {
+         if (multiPaperConnection == null) {
+             multiPaperConnection = new MultiPaperConnection();
+@@ -82,6 +87,14 @@ public class MultiPaper {
+                 server.getConnection().tick();
+             }
+         }
++
++        if (levelDatNeedsSaving) {
++            levelDatNeedsSaving = false;
++            LOGGER.info("A level.dat needs saving, all worlds are being force saved");
++            for (ServerLevel level : MinecraftServer.getServer().getAllLevels()) {
++                level.saveIncrementally(true);
++            }
++        }
+     }
+ 
+     public static void sendTickTime(long time, double tps) {
+@@ -341,6 +354,18 @@ public class MultiPaper {
+         writeRegionFile(world, path, cx, cz, nbtToBytes(compoundTag));
+     }
+ 
++    public static CompoundTag readLevel(String world) throws IOException {
++        byte[] data = getConnection().sendAndAwaitReply(new ReadLevelMessage(world), DataMessageReply.class).thenApply(message -> message.data).join();
++
++        return data.length == 0 ? null : NbtIo.readCompressed(new ByteArrayInputStream(data));
++    }
++
++    public static void writeLevel(String world, CompoundTag compoundTag) throws IOException {
++        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
++        NbtIo.writeCompressed(compoundTag, buffer);
++        getConnection().send(new WriteLevelMessage(world, buffer.toByteArray()), message -> { /* do nothing */ });
++    }
++
+     private static String getWorld(File path) {
+         do {
+             path = path.getParentFile();

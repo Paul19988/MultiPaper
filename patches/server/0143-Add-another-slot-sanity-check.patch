@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sat, 4 Nov 2023 11:17:18 +0900
+Subject: [PATCH] Add another slot sanity check
+
+
+diff --git a/src/main/java/net/minecraft/world/inventory/AbstractContainerMenu.java b/src/main/java/net/minecraft/world/inventory/AbstractContainerMenu.java
+index fa185a8145843edf44fc0aeedb6c36b2b13263ae..74c941f77bd92f20df183809533268051b373b03 100644
+--- a/src/main/java/net/minecraft/world/inventory/AbstractContainerMenu.java
++++ b/src/main/java/net/minecraft/world/inventory/AbstractContainerMenu.java
+@@ -599,7 +599,7 @@ public abstract class AbstractContainerMenu {
+                 int j2;
+ 
+                 if (actionType == ClickType.SWAP && (button >= 0 && button < 9 || button == 40)) {
+-                    if (slotIndex < 0) return; // Paper - Add slot sanity checks to container clicks
++                    if (slotIndex < 0|| button < 0) return; // Paper - Add slot sanity checks to container clicks
+                     ItemStack itemstack4 = playerinventory.getItem(button);
+ 
+                     slot = (Slot) this.slots.get(slotIndex);

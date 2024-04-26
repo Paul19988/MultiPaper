@@ -18,10 +18,10 @@ index 9e90c3df567a65b48a0b9341f784eb902cb35d8c..a860efd3010bcc5ab8ae616c9ca49807
  
      @NotNull
 diff --git a/src/main/java/com/destroystokyo/paper/event/server/PaperServerListPingEvent.java b/src/main/java/com/destroystokyo/paper/event/server/PaperServerListPingEvent.java
-index e886ac04c0c14ae5dfb87212e262b96ec5b3b9dc..906341ce6cf279357d5f1c59fdd846da3d34b71f 100644
+index 0bb6fdbdd05ae6a8fb413e0f6b8d84302d697267..4f569040cc5067304531a49d2fc2d3a8ac1a976c 100644
 --- a/src/main/java/com/destroystokyo/paper/event/server/PaperServerListPingEvent.java
 +++ b/src/main/java/com/destroystokyo/paper/event/server/PaperServerListPingEvent.java
-@@ -272,7 +272,7 @@ public class PaperServerListPingEvent extends ServerListPingEvent implements Can
+@@ -275,7 +275,7 @@ public class PaperServerListPingEvent extends ServerListPingEvent implements Can
  
      @NotNull
      protected Object[] getOnlinePlayers() {
@@ -31,10 +31,10 @@ index e886ac04c0c14ae5dfb87212e262b96ec5b3b9dc..906341ce6cf279357d5f1c59fdd846da
  
      @NotNull
 diff --git a/src/main/java/org/bukkit/Bukkit.java b/src/main/java/org/bukkit/Bukkit.java
-index 9518d779a6dd04a21887915f4835243ac9e85986..4485e50a4ce952638f78694223a24ad7b69ebdcd 100644
+index 5bafde1101b16de974690bef50620418dece21c2..746640dd61fd6f8d538938f03b564859547868c2 100644
 --- a/src/main/java/org/bukkit/Bukkit.java
 +++ b/src/main/java/org/bukkit/Bukkit.java
-@@ -169,8 +169,11 @@ public final class Bukkit {
+@@ -171,8 +171,11 @@ public final class Bukkit {
      }
      // Paper end
  
@@ -47,7 +47,7 @@ index 9518d779a6dd04a21887915f4835243ac9e85986..4485e50a4ce952638f78694223a24ad7
       * Collections#unmodifiableCollection(Collection) view} is a reused
       * object, making some operations like {@link Collection#size()}
       * zero-allocation.
-@@ -201,6 +204,73 @@ public final class Bukkit {
+@@ -203,6 +206,73 @@ public final class Bukkit {
          return server.getOnlinePlayers();
      }
  
@@ -122,10 +122,10 @@ index 9518d779a6dd04a21887915f4835243ac9e85986..4485e50a4ce952638f78694223a24ad7
       * Get the maximum amount of players which can login to this server.
       *
 diff --git a/src/main/java/org/bukkit/Server.java b/src/main/java/org/bukkit/Server.java
-index d0b47de04b24a5cd4f1de260214ef2f62eb09999..2b1ea1f427dc757b9e5da656cb9cb341acd00d00 100644
+index bf1d0d97c0da1967cd6ced5b31e480bafaff1a53..7585df5687a9a8ea4e564b8353561b6f0773660d 100644
 --- a/src/main/java/org/bukkit/Server.java
 +++ b/src/main/java/org/bukkit/Server.java
-@@ -125,8 +125,11 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
+@@ -127,8 +127,11 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
      String getMinecraftVersion();
      // Paper end
  
@@ -138,7 +138,7 @@ index d0b47de04b24a5cd4f1de260214ef2f62eb09999..2b1ea1f427dc757b9e5da656cb9cb341
       * Collections#unmodifiableCollection(Collection) view} is a reused
       * object, making some operations like {@link Collection#size()}
       * zero-allocation.
-@@ -155,6 +158,69 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
+@@ -157,6 +160,69 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
      @NotNull
      public Collection<? extends Player> getOnlinePlayers();
  
@@ -222,10 +222,10 @@ index b791358f90fe92bc2264d9a26492245763813af3..37fe0166d8cca0b380b9a1d3ea873646
              if ((senderPlayer == null || senderPlayer.canSee(player)) && StringUtil.startsWithIgnoreCase(name, lastWord)) {
                  matchedPlayers.add(name);
 diff --git a/src/main/java/org/bukkit/event/player/PlayerChatEvent.java b/src/main/java/org/bukkit/event/player/PlayerChatEvent.java
-index 3a1da86e3dbf18c6e1040086c1df4b8976bc2b9d..62a5bcc57d783f62c0bcf8e10b2c5b781c4290cd 100644
+index 2c021bc2ff18f0b3af5feb9dafc8ccebd604f8b5..8268379b58a443199bb011f96c6347b229ee5645 100644
 --- a/src/main/java/org/bukkit/event/player/PlayerChatEvent.java
 +++ b/src/main/java/org/bukkit/event/player/PlayerChatEvent.java
-@@ -33,7 +33,7 @@ public class PlayerChatEvent extends PlayerEvent implements Cancellable {
+@@ -27,7 +27,7 @@ public class PlayerChatEvent extends PlayerEvent implements Cancellable {
          super(player);
          this.message = message;
          this.format = "<%1$s> %2$s";

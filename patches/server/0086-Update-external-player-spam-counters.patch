@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 27 Feb 2022 11:24:14 +1000
+Subject: [PATCH] Update external player spam counters
+
+
+diff --git a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index 6b0f386264caba7f4d8265d77b8d5fd6ca9b48f1..d30f4fc287cfc09f38c271e8532a43c36a39c7bb 100644
+--- a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -413,6 +413,23 @@ public class ServerGamePacketListenerImpl extends ServerCommonPacketListenerImpl
+         if (this.dropSpamTickCount > 0) {
+             --this.dropSpamTickCount;
+         }
++        // MultiPaper start - move to reduceSpamCounters()
++        //        // CraftBukkit start
++        //        for (int spam; (spam = this.chatSpamTickCount.get()) > 0 && !this.chatSpamTickCount.compareAndSet(spam, spam - 1); ) ;
++        //        if (tabSpamLimiter.get() > 0) tabSpamLimiter.getAndDecrement(); // Paper - split to seperate variable
++        //        if (recipeSpamPackets.get() > 0) recipeSpamPackets.getAndDecrement(); // Paper
++        //        /* Use thread-safe field access instead
++        //        if (this.chatSpamTickCount > 0) {
++        //            --this.chatSpamTickCount;
++        //        }
++        //        */
++        //        // CraftBukkit end
++        //
++        //        if (this.dropSpamTickCount > 0) {
++        //            --this.dropSpamTickCount;
++        //        }
++        reduceSpamCounters();
++        // MultiPaper end
+ 
+         if (this.player.getLastActionTime() > 0L && this.server.getPlayerIdleTimeout() > 0 && Util.getMillis() - this.player.getLastActionTime() > (long) this.server.getPlayerIdleTimeout() * 1000L * 60L && !this.player.wonGame) { // Paper - Prevent AFK kick while watching end credits
+             // Purpur start
+@@ -443,6 +460,24 @@ public class ServerGamePacketListenerImpl extends ServerCommonPacketListenerImpl
+         this.lastGoodZ = this.player.getZ();
+     }
+ 
++    // MultiPaper start
++    public void reduceSpamCounters() {
++        // CraftBukkit start
++        for (int spam; (spam = this.chatSpamTickCount.get()) > 0 && !this.chatSpamTickCount.compareAndSet(spam, spam - 1); ) ;
++        if (tabSpamLimiter.get() > 0) tabSpamLimiter.getAndDecrement(); // Paper - split to seperate variable
++        if (recipeSpamPackets.get() > 0) recipeSpamPackets.getAndDecrement(); // Paper
++    /* Use thread-safe field access instead
++    if (this.chatSpamTickCount > 0) {
++        --this.chatSpamTickCount;
++    }
++    */
++        // CraftBukkit end
++        if (this.dropSpamTickCount > 0) {
++            --this.dropSpamTickCount;
++        }
++    }
++    // MultiPaper end
++
+     @Override
+     public boolean isAcceptingMessages() {
+         return this.connection.isConnected() && !this.waitingForSwitchToConfig;
+diff --git a/src/main/java/puregero/multipaper/MultiPaper.java b/src/main/java/puregero/multipaper/MultiPaper.java
+index adae1b18ae75274b4c41fbec4e754ed02078b12d..6f0a9a0ff2001b142724f426b65a2baf2384a238 100644
+--- a/src/main/java/puregero/multipaper/MultiPaper.java
++++ b/src/main/java/puregero/multipaper/MultiPaper.java
+@@ -97,6 +97,8 @@ public class MultiPaper {
+             }
+ 
+             player.syncExperience();
++
++            player.connection.reduceSpamCounters();
+         }
+ 
+         for (ExternalServer server : getConnection().getServersMap().values()) {

@@ -1,0 +1,298 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Wed, 14 Dec 2022 00:51:25 +1000
+Subject: [PATCH] Sync chat signing between servers
+
+Don't use chat signing with high player counts. Everyone's gonna get kicked
+with a chat signing validation error at some point. Just disable it for your
+own sake.
+
+diff --git a/src/main/java/io/papermc/paper/adventure/ChatProcessor.java b/src/main/java/io/papermc/paper/adventure/ChatProcessor.java
+index 1d78e8beacbc93ef2cd6beb418edca843f8a5429..ebeed0570607d379e783e0373c74f37030892f0c 100644
+--- a/src/main/java/io/papermc/paper/adventure/ChatProcessor.java
++++ b/src/main/java/io/papermc/paper/adventure/ChatProcessor.java
+@@ -44,6 +44,7 @@ import org.bukkit.event.player.PlayerChatEvent;
+ import org.checkerframework.checker.nullness.qual.NonNull;
+ import org.checkerframework.checker.nullness.qual.Nullable;
+ import org.checkerframework.framework.qual.DefaultQualifier;
++import puregero.multipaper.externalserverprotocol.AddPendingMessagePacket;
+ import org.intellij.lang.annotations.Subst;
+ 
+ import static net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection;
+@@ -205,6 +206,7 @@ public final class ChatProcessor {
+         } else {
+             outgoingChat.sendOriginal(player, viewers, chatType);
+         }
++        AddPendingMessagePacket.flush(); // MultiPaper
+     }
+ 
+     interface OutgoingChat {
+diff --git a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index 50114b3f3ac3e88b05a151647d97d3db17c04dfb..c097f8f5e70fef8f7bda669c5ff2b315df0546cd 100644
+--- a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -248,8 +248,10 @@ import puregero.multipaper.MultiPaperEntityInteractHandler;
+ import puregero.multipaper.MultiPaperInventoryHandler;
+ import puregero.multipaper.MultiPaperPlayerHandler;
+ import puregero.multipaper.MultiPaperSignHandler;
++import puregero.multipaper.externalserverprotocol.AddPendingMessagePacket;
+ import puregero.multipaper.externalserverprotocol.PlayerActionPacket;
+ import puregero.multipaper.externalserverprotocol.PlayerRemovePacket;
++import puregero.multipaper.externalserverprotocol.SetPlayerChatStatePacket;
+ // CraftBukkit end
+ 
+ public class ServerGamePacketListenerImpl extends ServerCommonPacketListenerImpl implements ServerGamePacketListener, ServerPlayerConnection, TickablePacketListener {
+@@ -298,7 +300,7 @@ public class ServerGamePacketListenerImpl extends ServerCommonPacketListenerImpl
+     private boolean hasLoggedExpiry = false; // Paper - Prevent causing expired keys from impacting new joins
+     private SignedMessageChain.Decoder signedMessageDecoder;
+     private final LastSeenMessagesValidator lastSeenMessages = new LastSeenMessagesValidator(20);
+-    private final MessageSignatureCache messageSignatureCache = MessageSignatureCache.createDefault();
++    public final MessageSignatureCache messageSignatureCache = MessageSignatureCache.createDefault(); // MultiPaper - make public
+     private final FutureChain chatMessageChain;
+     private boolean waitingForSwitchToConfig;
+     private static final int MAX_SIGN_LINE_LENGTH = Integer.getInteger("Paper.maxSignLength", 80); // Paper - Limit client sign length
+@@ -2607,6 +2609,8 @@ public class ServerGamePacketListenerImpl extends ServerCommonPacketListenerImpl
+     public void handleChatAck(ServerboundChatAckPacket packet) {
+         LastSeenMessagesValidator lastseenmessagesvalidator = this.lastSeenMessages;
+ 
++        if (MultiPaper.isRealPlayer(this.player)) MultiPaper.broadcastPacketToExternalServers(this.player, new PlayerActionPacket(this.player, packet)); // MultiPaper
++
+         synchronized (this.lastSeenMessages) {
+             if (!this.lastSeenMessages.applyOffset(packet.offset())) {
+                 ServerGamePacketListenerImpl.LOGGER.warn("Failed to validate message acknowledgements from {}", this.player.getName().getString());
+@@ -2749,7 +2753,8 @@ public class ServerGamePacketListenerImpl extends ServerCommonPacketListenerImpl
+ 
+     }
+ 
+-    public void addPendingMessage(PlayerChatMessage message) {
++    public void addPendingMessage(PlayerChatMessage message) { addPendingMessage(message, false); } // MultiPaper - add dontBroadcast parameter
++    public void addPendingMessage(PlayerChatMessage message, boolean dontBroadcast) { // MultiPaper - add dontBroadcast parameter
+         MessageSignature messagesignature = message.signature();
+ 
+         if (messagesignature != null) {
+@@ -2766,6 +2771,7 @@ public class ServerGamePacketListenerImpl extends ServerCommonPacketListenerImpl
+                 this.disconnect(Component.translatable("multiplayer.disconnect.too_many_pending_chats"), org.bukkit.event.player.PlayerKickEvent.Cause.TOO_MANY_PENDING_CHATS); // Paper - kick event cause
+             }
+ 
++            if (!dontBroadcast) AddPendingMessagePacket.broadcastAddMessage(message, this.player.getUUID()); // MultiPaper
+         }
+     }
+ 
+@@ -3647,6 +3653,7 @@ public class ServerGamePacketListenerImpl extends ServerCommonPacketListenerImpl
+         this.chatMessageChain.append(() -> {
+             this.player.setChatSession(session);
+             this.server.getPlayerList().broadcastAll(new ClientboundPlayerInfoUpdatePacket(EnumSet.of(ClientboundPlayerInfoUpdatePacket.Action.INITIALIZE_CHAT), List.of(this.player)), this.player); // Paper - Use single player info update packet on join
++            MultiPaper.broadcastPacketToExternalServers(new SetPlayerChatStatePacket(player.getUUID(), session)); // MultiPaper
+         });
+     }
+ 
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/AddPendingMessagePacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/AddPendingMessagePacket.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..25a1b8fde754a5ad5c51438171c7bd2c7b7dc0d4
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/AddPendingMessagePacket.java
+@@ -0,0 +1,137 @@
++package puregero.multipaper.externalserverprotocol;
++
++import net.minecraft.Util;
++import net.minecraft.network.FriendlyByteBuf;
++import net.minecraft.network.chat.Component;
++import net.minecraft.network.chat.FilterMask;
++import net.minecraft.network.chat.LastSeenMessages;
++import net.minecraft.network.chat.MessageSignature;
++import net.minecraft.network.chat.PlayerChatMessage;
++import net.minecraft.network.chat.SignedMessageBody;
++import net.minecraft.network.chat.SignedMessageLink;
++import net.minecraft.server.MinecraftServer;
++import net.minecraft.server.level.ServerPlayer;
++import org.apache.logging.log4j.LogManager;
++import org.apache.logging.log4j.Logger;
++import puregero.multipaper.ExternalServerConnection;
++import puregero.multipaper.MultiPaper;
++import java.time.Instant;
++import java.util.Collection;
++import java.util.HashSet;
++import java.util.Iterator;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++import java.util.UUID;
++import java.util.concurrent.CompletableFuture;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.TimeUnit;
++
++public class AddPendingMessagePacket extends ExternalServerPacket {
++
++    private static final Logger LOGGER = LogManager.getLogger(AddPendingMessagePacket.class.getSimpleName());
++    private static final Map<PlayerChatMessage, Set<UUID>> chatMessagesToFlush = new ConcurrentHashMap<>();
++    private static CompletableFuture<Void> flushTask = CompletableFuture.completedFuture(null);
++
++    public static void broadcastAddMessage(PlayerChatMessage message, UUID uuid) {
++        // Buffer all uuids for a single chat message so that we aren't sending the entire message for every player
++        chatMessagesToFlush.compute(message, (key, uuidSet) -> {
++            if (uuidSet == null) {
++                uuidSet = new HashSet<>();
++            }
++            uuidSet.add(uuid);
++            return uuidSet;
++        });
++        if (flushTask.isDone()) {
++            flushTask = CompletableFuture.runAsync(AddPendingMessagePacket::flush, CompletableFuture.delayedExecutor(1, TimeUnit.MILLISECONDS));
++        }
++    }
++
++    public static void flush() {
++        synchronized (chatMessagesToFlush) {
++            // Synchronized to prevent concurrent flushes (concurrent additions are fine)
++            Iterator<Map.Entry<PlayerChatMessage, Set<UUID>>> iterator = chatMessagesToFlush.entrySet().iterator();
++            while (iterator.hasNext()) {
++                Map.Entry<PlayerChatMessage, Set<UUID>> entry = iterator.next();
++                iterator.remove();
++                PlayerChatMessage message = entry.getKey();
++                Set<UUID> uuids = entry.getValue();
++                MultiPaper.broadcastPacketToExternalServers(new AddPendingMessagePacket(message, uuids));
++            }
++        }
++    }
++
++    private final Collection<UUID> uuids;
++    private final int index;
++    private final UUID sender;
++    private final UUID sessionId;
++    private final MessageSignature messageSignature;
++    private final String content;
++    private final Instant timeStamp;
++    private final long salt;
++    private final List<MessageSignature> lastSeen;
++    private final Component unsignedContent;
++    private final FilterMask filterMask;
++
++    public AddPendingMessagePacket(PlayerChatMessage message, Set<UUID> uuids) {
++        this.uuids = uuids;
++        this.index = message.link().index();
++        this.sender = message.link().sender();
++        this.sessionId = message.link().sessionId();
++        this.messageSignature = message.signature();
++        this.content = message.signedBody().content();
++        this.timeStamp = message.signedBody().timeStamp();
++        this.salt = message.signedBody().salt();
++        this.lastSeen = message.signedBody().lastSeen().entries();
++        this.unsignedContent = message.unsignedContent();
++        this.filterMask = message.filterMask();
++    }
++
++    public AddPendingMessagePacket(FriendlyByteBuf in) {
++        this.uuids = in.readList(FriendlyByteBuf::readUUID);
++        this.index = in.readInt();
++        this.sender = in.readUUID();
++        this.sessionId = in.readNullable(FriendlyByteBuf::readUUID);
++        this.messageSignature = in.readNullable(MessageSignature::read);
++        this.content = in.readUtf();
++        this.timeStamp = in.readInstant();
++        this.salt = in.readLong();
++        this.lastSeen = in.readList(MessageSignature::read);
++        this.unsignedContent = in.readNullable(FriendlyByteBuf::readComponent);
++        this.filterMask = FilterMask.read(in);
++    }
++
++    @Override
++    public void write(FriendlyByteBuf out) {
++        out.writeCollection(this.uuids, FriendlyByteBuf::writeUUID);
++        out.writeInt(this.index);
++        out.writeUUID(this.sender);
++        out.writeNullable(this.sessionId, FriendlyByteBuf::writeUUID);
++        out.writeNullable(this.messageSignature, MessageSignature::write);
++        out.writeUtf(this.content);
++        out.writeInstant(this.timeStamp);
++        out.writeLong(this.salt);
++        out.writeCollection(this.lastSeen, MessageSignature::write);
++        out.writeNullable(this.unsignedContent, FriendlyByteBuf::writeComponent);
++        FilterMask.write(out, this.filterMask);
++    }
++
++    @Override
++    public void handle(ExternalServerConnection connection) {
++        PlayerChatMessage chatMessage = new PlayerChatMessage(
++                new SignedMessageLink(this.index, this.sender, this.sessionId == null ? Util.NIL_UUID : this.sessionId),
++                this.messageSignature,
++                new SignedMessageBody(this.content, this.timeStamp, this.salt, new LastSeenMessages(this.lastSeen)),
++                this.unsignedContent,
++                this.filterMask
++        );
++        for (UUID uuid : uuids) {
++            ServerPlayer player = MinecraftServer.getServer().getPlayerList().getPlayer(uuid);
++            if (player != null) {
++                player.connection.addPendingMessage(chatMessage, true);
++            } else {
++                LOGGER.warn("Could not find player " + uuid);
++            }
++        }
++    }
++}
+\ No newline at end of file
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java b/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
+index a59b27c42f131779d62003f89a3ea973dfb493ab..2c6ca0390049c98419ec08a41940b0a4a7c9b921 100644
+--- a/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
+@@ -79,6 +79,8 @@ public class ExternalServerPacketSerializer {
+         addPacket(AddDeltaMovementPacket.class, AddDeltaMovementPacket::new);
+         addPacket(PistonMoveBlockStartPacket.class, PistonMoveBlockStartPacket::new);
+         addPacket(PistonMoveBlockEndPacket.class, PistonMoveBlockEndPacket::new);
++        addPacket(AddPendingMessagePacket.class, AddPendingMessagePacket::new);
++        addPacket(SetPlayerChatStatePacket.class, SetPlayerChatStatePacket::new);
+     }
+ 
+     private static void addPacket(Class<? extends ExternalServerPacket> clazz, Function<FriendlyByteBuf, ExternalServerPacket> deserializer) {
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/SetPlayerChatStatePacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/SetPlayerChatStatePacket.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..8be8faf92a3bdb3f0215b7361c68b46173a917b3
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/SetPlayerChatStatePacket.java
+@@ -0,0 +1,46 @@
++package puregero.multipaper.externalserverprotocol;
++
++import net.minecraft.network.FriendlyByteBuf;
++import net.minecraft.network.chat.RemoteChatSession;
++import net.minecraft.server.MinecraftServer;
++import net.minecraft.server.level.ServerPlayer;
++import net.minecraft.world.entity.player.ProfilePublicKey;
++import org.apache.logging.log4j.LogManager;
++import org.apache.logging.log4j.Logger;
++import puregero.multipaper.ExternalServerConnection;
++import java.util.UUID;
++
++public class SetPlayerChatStatePacket extends ExternalServerPacket {
++    private static final Logger LOGGER = LogManager.getLogger(SetPlayerChatStatePacket.class.getSimpleName());
++    private UUID uuid;
++    private RemoteChatSession.Data chatSession;
++
++    public SetPlayerChatStatePacket(UUID uuid, RemoteChatSession chatSession) {
++        this.uuid = uuid;
++        this.chatSession = chatSession.asData();
++    }
++
++    public SetPlayerChatStatePacket(FriendlyByteBuf in) {
++        this.uuid = in.readUUID();
++        this.chatSession = in.readNullable(RemoteChatSession.Data::read);
++    }
++
++    @Override
++    public void write(FriendlyByteBuf out) {
++        out.writeUUID(this.uuid);
++        out.writeNullable(chatSession, RemoteChatSession.Data::write);
++    }
++
++    @Override
++    public void handle(ExternalServerConnection connection) {
++        ServerPlayer player = MinecraftServer.getServer().getPlayerList().getPlayer(this.uuid);
++        if (player != null) {
++            player.setChatSession(new RemoteChatSession(
++                    this.chatSession.sessionId(),
++                    new ProfilePublicKey(this.chatSession.profilePublicKey())
++            ));
++        } else {
++            LOGGER.warn("Could not find player for SetPlayerChatStatePacket " + this.uuid + ": " + player);
++        }
++    }
++}
+\ No newline at end of file

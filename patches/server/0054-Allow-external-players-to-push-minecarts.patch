@@ -1,0 +1,47 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 24 Dec 2021 16:53:05 +1000
+Subject: [PATCH] Allow external players to push minecarts
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/vehicle/AbstractMinecart.java b/src/main/java/net/minecraft/world/entity/vehicle/AbstractMinecart.java
+index eb5bd5cfd131042e366872bf599a315d83dc732b..9775d6e7d927ade3bd55336b29ff8c56d0a0ee38 100644
+--- a/src/main/java/net/minecraft/world/entity/vehicle/AbstractMinecart.java
++++ b/src/main/java/net/minecraft/world/entity/vehicle/AbstractMinecart.java
+@@ -54,6 +54,7 @@ import org.bukkit.craftbukkit.util.CraftLocation;
+ import org.bukkit.entity.Vehicle;
+ import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
+ import org.bukkit.util.Vector;
++import puregero.multipaper.MultiPaper;
+ // CraftBukkit end
+ 
+ public abstract class AbstractMinecart extends VehicleEntity {
+@@ -451,7 +452,28 @@ public abstract class AbstractMinecart extends VehicleEntity {
+ 
+             this.firstTick = false;
+         }
++
++        getPushedByExternalPlayers(); // MultiPaper
++    }
++
++    // MultiPaper start
++    public void getPushedByExternalPlayers() {
++        List<Entity> list = this.level().getEntities(this, this.getBoundingBox(), EntitySelector.pushable(this, level().paperConfig().collisions.fixClimbingBypassingCrammingRule));
++
++        if (!list.isEmpty()) {
++            this.numCollisions = Math.max(0, this.numCollisions - this.level().paperConfig().collisions.maxEntityCollisions);
++            for (int j = 0; j < list.size() && this.numCollisions < this.level().paperConfig().collisions.maxEntityCollisions; ++j) {
++                Entity entity = list.get(j);
++
++                if (MultiPaper.isExternalPlayer(entity)) {
++                    this.numCollisions++;
++
++                    this.push(entity);
++                }
++            }
++        }
+     }
++    // MultiPaper end
+ 
+     protected double getMaxSpeed() {
+         return (this.isInWater() ? this.maxSpeed / 2.0D: this.maxSpeed); // CraftBukkit

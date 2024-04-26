@@ -1,0 +1,122 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sat, 9 Jul 2022 12:34:14 +1000
+Subject: [PATCH] Sync entity velocity changes
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/Entity.java b/src/main/java/net/minecraft/world/entity/Entity.java
+index 0caba54803e881ad4dcb03a9c5fc713c0e9f8ea8..a46cffcbb2205b0e84368d235538d83db4edfb27 100644
+--- a/src/main/java/net/minecraft/world/entity/Entity.java
++++ b/src/main/java/net/minecraft/world/entity/Entity.java
+@@ -4866,6 +4866,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+     public void addDeltaMovement(Vec3 velocity) {
+         this.setDeltaMovement(this.getDeltaMovement().add(velocity));
++        AddDeltaMovementPacket.broadcast(this, velocity); // MultiPaper
+     }
+ 
+     public void setDeltaMovement(double x, double y, double z) {
+diff --git a/src/main/java/net/minecraft/world/level/Explosion.java b/src/main/java/net/minecraft/world/level/Explosion.java
+index 0be03430d8257d918b7cf646af518473ae027399..317ba1b74f4180096594f3da6fa11ba67fbf1826 100644
+--- a/src/main/java/net/minecraft/world/level/Explosion.java
++++ b/src/main/java/net/minecraft/world/level/Explosion.java
+@@ -655,6 +655,7 @@ public class Explosion {
+                         }
+                         // CraftBukkit end
+                         entity.setDeltaMovement(entity.getDeltaMovement().add(vec3d1));
++                        entity.addDeltaMovement(vec3d1); // MultiPaper
+                         if (entity instanceof Player) {
+                             Player entityhuman = (Player) entity;
+ 
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/AddDeltaMovementPacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/AddDeltaMovementPacket.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..1eabbeb26c5717c5edc15c82ecbcfe84f092bd20
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/AddDeltaMovementPacket.java
+@@ -0,0 +1,73 @@
++package puregero.multipaper.externalserverprotocol;
++
++import io.papermc.paper.chunk.system.scheduling.NewChunkHolder;
++import net.minecraft.network.FriendlyByteBuf;
++import net.minecraft.server.level.ServerLevel;
++import net.minecraft.world.entity.Entity;
++import net.minecraft.world.phys.Vec3;
++import org.bukkit.Bukkit;
++import org.bukkit.World;
++import org.bukkit.craftbukkit.CraftWorld;
++import puregero.multipaper.ExternalPlayer;
++import puregero.multipaper.ExternalServerConnection;
++import puregero.multipaper.MultiPaper;
++import puregero.multipaper.MultiPaperEntitiesHandler;
++import java.util.UUID;
++
++public class AddDeltaMovementPacket extends ExternalServerPacket {
++
++    private static boolean handlingPacket = false;
++    private final UUID world;
++    private final UUID entityUUID;
++    private final Vec3 velocity;
++
++    public AddDeltaMovementPacket(ServerLevel level, Entity entity, Vec3 velocity) {
++        this.world = level.getWorld().getUID();
++        this.entityUUID = entity.getUUID();
++        this.velocity = velocity;
++    }
++
++    public static void broadcast(Entity entity, Vec3 velocity) {
++        if (!handlingPacket) {
++            Entity controller = MultiPaperEntitiesHandler.getControllingPassenger(entity);
++            if (controller instanceof ExternalPlayer externalPlayer) {
++                externalPlayer.externalServerConnection.send(new AddDeltaMovementPacket((ServerLevel) entity.level(), entity, velocity));
++            } else {
++                NewChunkHolder newChunkHolder = MultiPaper.getChunkHolder(entity);
++                if (newChunkHolder != null && newChunkHolder.externalOwner != null && newChunkHolder.externalOwner.getConnection() != null) {
++                    newChunkHolder.externalOwner.getConnection().send(new AddDeltaMovementPacket((ServerLevel) entity.level(), entity, velocity));
++                }
++            }
++        }
++    }
++
++    public AddDeltaMovementPacket(FriendlyByteBuf in) {
++        this.world = in.readUUID();
++        this.entityUUID = in.readUUID();
++        this.velocity = new Vec3(in.readDouble(), in.readDouble(), in.readDouble());
++    }
++
++    @Override
++    public void write(FriendlyByteBuf out) {
++        out.writeUUID(this.world);
++        out.writeUUID(this.entityUUID);
++        out.writeDouble(this.velocity.x);
++        out.writeDouble(this.velocity.y);
++        out.writeDouble(this.velocity.z);
++    }
++
++    @Override
++    public void handle(ExternalServerConnection connection) {
++        MultiPaper.runSync(() -> {
++            handlingPacket = true;
++            World world = Bukkit.getWorld(this.world);
++            if (world instanceof CraftWorld craftWorld) {
++                Entity entity = craftWorld.getHandle().getEntity(entityUUID);
++                if (entity != null) {
++                    entity.addDeltaMovement(velocity);
++                }
++            }
++            handlingPacket = false;
++        });
++    }
++}
+\ No newline at end of file
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java b/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
+index daa986af84401ab6b454054973d50c1cd59853ad..8f67dae0f8c999688f9e4c15ad93553b95b3408f 100644
+--- a/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/ExternalServerPacketSerializer.java
+@@ -76,6 +76,7 @@ public class ExternalServerPacketSerializer {
+         addPacket(RaidUpdatePacket.class, RaidUpdatePacket::new);
+         addPacket(RaidJoinPacket.class, RaidJoinPacket::new);
+         addPacket(SetPoiPacket.class, SetPoiPacket::new);
++        addPacket(AddDeltaMovementPacket.class, AddDeltaMovementPacket::new);
+     }
+ 
+     private static void addPacket(Class<? extends ExternalServerPacket> clazz, Function<FriendlyByteBuf, ExternalServerPacket> deserializer) {

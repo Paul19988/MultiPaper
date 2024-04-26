@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Wed, 5 Jan 2022 19:49:32 +1000
+Subject: [PATCH] Allow for only ip forwarding with no uuid
+
+
+diff --git a/src/main/java/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java b/src/main/java/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java
+index 7d28826d8d4018d47b3bf826059cdd97b6a5cae8..a945341362ca82613ba60c56e509134516310870 100644
+--- a/src/main/java/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java
++++ b/src/main/java/net/minecraft/server/network/ServerHandshakePacketListenerImpl.java
+@@ -145,7 +145,7 @@ public class ServerHandshakePacketListenerImpl implements ServerHandshakePacketL
+                     if (!handledByEvent && proxyLogicEnabled) {
+                         // Paper end - PlayerHandshakeEvent
+                     // if (org.spigotmc.SpigotConfig.bungee) { // Paper - comment out, we check above!
+-                        if ( ( split.length == 3 || split.length == 4 ) && ( ServerHandshakePacketListenerImpl.BYPASS_HOSTCHECK || ServerHandshakePacketListenerImpl.HOST_PATTERN.matcher( split[1] ).matches() ) ) { // Paper - Add bypass host check
++                        if ( ( split.length == 3 || split.length == 4 ) && ( ServerHandshakePacketListenerImpl.BYPASS_HOSTCHECK || ServerHandshakePacketListenerImpl.HOST_PATTERN.matcher( split[1] ).matches() ) ) { // Paper - Add bypass host check // MultiPaper - Allow for only ip-forwarding
+                             // Paper start - Unix domain socket support
+                             java.net.SocketAddress socketAddress = this.connection.getRemoteAddress();
+                             this.connection.hostname = split[0];

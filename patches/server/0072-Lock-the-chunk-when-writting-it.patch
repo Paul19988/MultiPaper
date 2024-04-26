@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 16 Jan 2022 11:51:16 +1000
+Subject: [PATCH] Lock the chunk when writting it
+
+
+diff --git a/src/main/java/io/papermc/paper/chunk/system/scheduling/NewChunkHolder.java b/src/main/java/io/papermc/paper/chunk/system/scheduling/NewChunkHolder.java
+index ac2b8a48dd9244b87c2fd9eede54d883fbab2118..0c9253b6c60a2107eeeab99fc1a8778f1293774f 100644
+--- a/src/main/java/io/papermc/paper/chunk/system/scheduling/NewChunkHolder.java
++++ b/src/main/java/io/papermc/paper/chunk/system/scheduling/NewChunkHolder.java
+@@ -1906,6 +1906,7 @@ public final class NewChunkHolder {
+             if (unloading) {
+                 try {
+                     chunk.setUnsaved(false); // MultiPaper - set as saved before serializing
++                    MultiPaper.willSaveChunk(this.world, this.chunkX, this.chunkZ); // MultiPaper
+                     final ChunkSerializer.AsyncSaveData asyncSaveData = ChunkSerializer.getAsyncSaveData(this.world, chunk);
+ 
+                     final PrioritisedExecutor.PrioritisedTask task = this.scheduler.loadExecutor.createTask(new AsyncChunkSerializeTask(this.world, chunk, asyncSaveData, this));
+@@ -1930,6 +1931,7 @@ public final class NewChunkHolder {
+ 
+             if (unloading) {
+                 completing = true;
++                MultiPaper.willSaveChunk(this.world, this.chunkX, this.chunkZ); // MultiPaper
+                 this.completeAsyncChunkDataSave(save);
+                 LOGGER.info("Successfully serialized chunk data (" + this.chunkX + "," + this.chunkZ + ") in world '" + this.world.getWorld().getName() + "' synchronously");
+             } else {
+diff --git a/src/main/java/puregero/multipaper/MultiPaper.java b/src/main/java/puregero/multipaper/MultiPaper.java
+index 5dbf38643fc89ec3b9e30a31353eeb6453379436..adae1b18ae75274b4c41fbec4e754ed02078b12d 100644
+--- a/src/main/java/puregero/multipaper/MultiPaper.java
++++ b/src/main/java/puregero/multipaper/MultiPaper.java
+@@ -534,6 +534,10 @@ public class MultiPaper {
+         newChunkHolder.hasExternalLockRequest = false;
+     }
+ 
++    public static void willSaveChunk(ServerLevel level, int x, int z) {
++        getConnection().send(new WillSaveChunkLaterMessage(level.getWorld().getName(), x, z));
++    }
++
+     public static byte[] nbtCompressToBytes(CompoundTag compoundTag) throws IOException {
+         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+         DeflaterOutputStream deflaterOutputStream = new DeflaterOutputStream(buffer);

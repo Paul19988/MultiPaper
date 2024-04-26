@@ -1,0 +1,40 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Mon, 15 Nov 2021 13:02:02 +1000
+Subject: [PATCH] Add sendTickTime
+
+
+diff --git a/src/main/java/net/minecraft/server/MinecraftServer.java b/src/main/java/net/minecraft/server/MinecraftServer.java
+index e48caf562f64cf520ae15abf116fc0f54579221b..c4032f45bb74ec731cf6362aba39c62380acaf12 100644
+--- a/src/main/java/net/minecraft/server/MinecraftServer.java
++++ b/src/main/java/net/minecraft/server/MinecraftServer.java
+@@ -1611,6 +1611,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+         tickTimes10s.add(this.tickCount, j);
+         tickTimes60s.add(this.tickCount, j);
+         // Paper end - Add tick times API and /mspt command
++        MultiPaper.sendTickTime(k - i, recentTps[0]); // MultiPaper
+         this.logTickTime(l - i);
+         //this.profiler.pop(); // Purpur
+         org.spigotmc.WatchdogThread.tick(); // Spigot
+diff --git a/src/main/java/puregero/multipaper/MultiPaper.java b/src/main/java/puregero/multipaper/MultiPaper.java
+index 435e6bfe575f88446d1f4657d4894991dd136971..b6a80ad8dff64c292e4948e37357dcf706682329 100644
+--- a/src/main/java/puregero/multipaper/MultiPaper.java
++++ b/src/main/java/puregero/multipaper/MultiPaper.java
+@@ -1,5 +1,7 @@
+ package puregero.multipaper;
+ 
++import puregero.multipaper.mastermessagingprotocol.messages.masterbound.WriteTickTimeMessage;
++
+ public class MultiPaper {
+     private static MultiPaperConnection multiPaperConnection = null;
+     public static MultiPaperConnection getConnection() {
+@@ -8,4 +10,8 @@ public class MultiPaper {
+         }
+         return multiPaperConnection;
+     }
++
++    public static void sendTickTime(long time, double tps) {
++        getConnection().send(new WriteTickTimeMessage(time, (float) tps));
++    }
+ }
+\ No newline at end of file

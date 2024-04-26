@@ -1,0 +1,27 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: mohammed jasem alaajel <xrambad@gmail.com>
+Date: Fri, 17 Feb 2023 20:58:00 +0400
+Subject: [PATCH] fix enderpearls teleport on external entities
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/projectile/ThrownEnderpearl.java b/src/main/java/net/minecraft/world/entity/projectile/ThrownEnderpearl.java
+index d9761d8fe746e925a7a32dfc15eb8045c6150fe5..712bbc0ed09f45eacdadbf0560fd335302f9c507 100644
+--- a/src/main/java/net/minecraft/world/entity/projectile/ThrownEnderpearl.java
++++ b/src/main/java/net/minecraft/world/entity/projectile/ThrownEnderpearl.java
+@@ -23,6 +23,7 @@ import org.bukkit.craftbukkit.event.CraftEventFactory;
+ import org.bukkit.event.entity.CreatureSpawnEvent;
+ import org.bukkit.event.entity.EntityRemoveEvent;
+ import org.bukkit.event.player.PlayerTeleportEvent;
++import puregero.multipaper.MultiPaper;
+ // CraftBukkit end
+ 
+ public class ThrownEnderpearl extends ThrowableItemProjectile {
+@@ -54,7 +55,7 @@ public class ThrownEnderpearl extends ThrowableItemProjectile {
+             this.level().addParticle(ParticleTypes.PORTAL, this.getX(), this.getY() + this.random.nextDouble() * 2.0D, this.getZ(), this.random.nextGaussian(), 0.0D, this.random.nextGaussian());
+         }
+ 
+-        if (!this.level().isClientSide && !this.isRemoved()) {
++        if (!this.level().isClientSide && !this.isRemoved() && MultiPaper.isChunkLocal((ServerLevel) this.level(), blockPosition)) { // MultiPaper - Fix ender pearls on external entities
+             Entity entity = this.getOwner();
+ 
+             if (entity instanceof ServerPlayer) {

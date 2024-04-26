@@ -5,10 +5,10 @@ Subject: [PATCH] Add MultiPaper API
 
 
 diff --git a/src/main/java/org/bukkit/Bukkit.java b/src/main/java/org/bukkit/Bukkit.java
-index 584e3b08935f43beb27f478cc72229b6a5f40689..31d4e2df37990e75e16404cfc4fc8e0275d7deed 100644
+index 53ce0fb2dac9c22680ab934f535b5a2037139445..5bafde1101b16de974690bef50620418dece21c2 100644
 --- a/src/main/java/org/bukkit/Bukkit.java
 +++ b/src/main/java/org/bukkit/Bukkit.java
-@@ -765,6 +765,28 @@ public final class Bukkit {
+@@ -796,6 +796,28 @@ public final class Bukkit {
          return server.getServicesManager();
      }
  
@@ -38,10 +38,10 @@ index 584e3b08935f43beb27f478cc72229b6a5f40689..31d4e2df37990e75e16404cfc4fc8e02
       * Gets a list of all worlds on this server.
       *
 diff --git a/src/main/java/org/bukkit/Chunk.java b/src/main/java/org/bukkit/Chunk.java
-index 4418c41f75e9a190dd77abdd6048b0a4fb2a57ed..8f35880c12e16a8ed7f1ef7d3fd9df5cd2569d7b 100644
+index d547ae2b20c58bc703de4532b3b591dd34ddb1c6..370bfbdfb163d59f9cb9bd034e591c52da43876a 100644
 --- a/src/main/java/org/bukkit/Chunk.java
 +++ b/src/main/java/org/bukkit/Chunk.java
-@@ -192,6 +192,26 @@ public interface Chunk extends PersistentDataHolder {
+@@ -211,6 +211,26 @@ public interface Chunk extends PersistentDataHolder {
       */
      boolean unload();
  
@@ -69,7 +69,7 @@ index 4418c41f75e9a190dd77abdd6048b0a4fb2a57ed..8f35880c12e16a8ed7f1ef7d3fd9df5c
       * Checks if this chunk can spawn slimes without being a swamp biome.
       *
 diff --git a/src/main/java/org/bukkit/Location.java b/src/main/java/org/bukkit/Location.java
-index 1bfe465b9aaeea7d3c871140145b7de1b8f1d93d..2a18c57a2b6c686a807a19e44e6db2f0eb57b566 100644
+index c6049747fc286acb4e8053901fcc517e5170afa2..47c67a7defd285c5ce6716f6b2cd247379eec2e3 100644
 --- a/src/main/java/org/bukkit/Location.java
 +++ b/src/main/java/org/bukkit/Location.java
 @@ -346,6 +346,30 @@ public class Location implements Cloneable, ConfigurationSerializable, io.paperm
@@ -248,10 +248,10 @@ index 0000000000000000000000000000000000000000..809fcfc71b8d7ebdf9321b860543c9de
 +    }
 +}
 diff --git a/src/main/java/org/bukkit/Server.java b/src/main/java/org/bukkit/Server.java
-index aaef58468a3c31f35e5067ed4263e9dd3fbddddd..90473491298e519155d0444cc0828d1f8cc3f3fe 100644
+index c15b0b05870a469ea5d314c9fac6a57a045f463c..bf1d0d97c0da1967cd6ced5b31e480bafaff1a53 100644
 --- a/src/main/java/org/bukkit/Server.java
 +++ b/src/main/java/org/bukkit/Server.java
-@@ -640,6 +640,24 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
+@@ -665,6 +665,24 @@ public interface Server extends PluginMessageRecipient, net.kyori.adventure.audi
      @NotNull
      public ServicesManager getServicesManager();
  
@@ -277,10 +277,10 @@ index aaef58468a3c31f35e5067ed4263e9dd3fbddddd..90473491298e519155d0444cc0828d1f
       * Gets a list of all worlds on this server.
       *
 diff --git a/src/main/java/org/bukkit/World.java b/src/main/java/org/bukkit/World.java
-index 63bf1d70cce9176f47a158a4a767b1bf38d60dbd..b45339c1ba6c9dfd288a67d50d29c36808656aa2 100644
+index 07e75978b4fc0e446e8aa46a40be5e371dc1c11b..d961d2b9d1b1ed248b1810475bdfade204ff61fd 100644
 --- a/src/main/java/org/bukkit/World.java
 +++ b/src/main/java/org/bukkit/World.java
-@@ -399,6 +399,26 @@ public interface World extends RegionAccessor, WorldInfo, PluginMessageRecipient
+@@ -426,6 +426,26 @@ public interface World extends RegionAccessor, WorldInfo, PluginMessageRecipient
      @Deprecated
      public boolean isChunkInUse(int x, int z);
  
@@ -308,7 +308,7 @@ index 63bf1d70cce9176f47a158a4a767b1bf38d60dbd..b45339c1ba6c9dfd288a67d50d29c368
       * Loads the {@link Chunk} at the specified coordinates.
       * <p>
 diff --git a/src/main/java/org/bukkit/block/Block.java b/src/main/java/org/bukkit/block/Block.java
-index 41b7310a514bf4d42c501e4bffe04008bda2541f..3408b26127c0bf08b009a5253c0b4663d51f0da5 100644
+index 8a842840e1a2652a6356d4a56e4749a5ba36e902..e4a49734437e8db9f15759c98507ca3c0514812e 100644
 --- a/src/main/java/org/bukkit/block/Block.java
 +++ b/src/main/java/org/bukkit/block/Block.java
 @@ -440,6 +440,28 @@ public interface Block extends Metadatable, Translatable, net.kyori.adventure.tr
@@ -341,10 +341,10 @@ index 41b7310a514bf4d42c501e4bffe04008bda2541f..3408b26127c0bf08b009a5253c0b4663
       * Checks if this block is empty.
       * <p>
 diff --git a/src/main/java/org/bukkit/entity/Entity.java b/src/main/java/org/bukkit/entity/Entity.java
-index 98de85d1382fe84cdc2e2c9db04bf1b4f157291c..36d21a3083db86b0d1ed586e62fb239d7957dc9b 100644
+index 706096924ffd3b578866693e2937de4182fad554..903335e6c54a3dac071b168390a73174863a172d 100644
 --- a/src/main/java/org/bukkit/entity/Entity.java
 +++ b/src/main/java/org/bukkit/entity/Entity.java
-@@ -235,6 +235,26 @@ public interface Entity extends Metadatable, CommandSender, Nameable, Persistent
+@@ -242,6 +242,26 @@ public interface Entity extends Metadatable, CommandSender, Nameable, Persistent
       */
      public int getEntityId();
  
@@ -372,11 +372,11 @@ index 98de85d1382fe84cdc2e2c9db04bf1b4f157291c..36d21a3083db86b0d1ed586e62fb239d
       * Returns the entity's current fire ticks (ticks before the entity stops
       * being on fire).
 diff --git a/src/main/java/org/bukkit/entity/Player.java b/src/main/java/org/bukkit/entity/Player.java
-index d3d5d2c78cc4ee36beaa355ef7e61ef13332abab..e19096451411b48222f9936ddbaf632e6c4c6558 100644
+index 8bbbdad40bc6a1932d8f79ec95c0a92037b3dac5..537cccc854167074b8171684ba8d8f346834279f 100644
 --- a/src/main/java/org/bukkit/entity/Player.java
 +++ b/src/main/java/org/bukkit/entity/Player.java
-@@ -499,6 +499,84 @@ public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginM
-      */
+@@ -534,6 +534,84 @@ public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginM
+     @Deprecated
      public void setBedSpawnLocation(@Nullable Location location, boolean force);
  
 +    // MultiPaper start
@@ -458,5 +458,5 @@ index d3d5d2c78cc4ee36beaa355ef7e61ef13332abab..e19096451411b48222f9936ddbaf632e
 +    // MultiPaper end
 +
      /**
-      * Play a note for a player at a location. This requires a note block
-      * at the particular location (as far as the client is concerned). This
+      * Sets the Location where the player will respawn.
+      *

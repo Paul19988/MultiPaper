@@ -1,0 +1,134 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sat, 4 Dec 2021 12:23:17 +1000
+Subject: [PATCH] Sync enderchests
+
+
+diff --git a/src/main/java/net/minecraft/server/level/ServerPlayer.java b/src/main/java/net/minecraft/server/level/ServerPlayer.java
+index 2742916f9e669a735c72ff492fdbc4425c519296..22095d4d387db702229395e0a5550311318d1dfa 100644
+--- a/src/main/java/net/minecraft/server/level/ServerPlayer.java
++++ b/src/main/java/net/minecraft/server/level/ServerPlayer.java
+@@ -442,6 +442,7 @@ public class ServerPlayer extends Player {
+         this.adventure$displayName = net.kyori.adventure.text.Component.text(this.getScoreboardName()); // Paper
+         this.bukkitPickUpLoot = true;
+         this.maxHealthCache = this.getMaxHealth();
++        enderChestInventory.addListener(new MultiPaperEnderChestHandler(this)); // MultiPaper
+     }
+ 
+     // Yes, this doesn't match Vanilla, but it's the best we can do for now.
+diff --git a/src/main/java/puregero/multipaper/MultiPaperEnderChestHandler.java b/src/main/java/puregero/multipaper/MultiPaperEnderChestHandler.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..7495e03a21c26a2876e897dc05a95e8a0ff158f7
+--- /dev/null
++++ b/src/main/java/puregero/multipaper/MultiPaperEnderChestHandler.java
+@@ -0,0 +1,81 @@
++package puregero.multipaper;
++
++import net.minecraft.nbt.CompoundTag;
++import net.minecraft.nbt.ListTag;
++import net.minecraft.server.level.ServerPlayer;
++import net.minecraft.world.Container;
++import net.minecraft.world.ContainerListener;
++import net.minecraft.world.item.ItemStack;
++import org.bukkit.Bukkit;
++import org.bukkit.craftbukkit.scheduler.CraftScheduler;
++import org.bukkit.scheduler.BukkitTask;
++import puregero.multipaper.externalserverprotocol.PlayerInventoryUpdatePacket;
++
++public class MultiPaperEnderChestHandler implements ContainerListener {
++    private static boolean broadcastChanges = true;
++    private final ServerPlayer player;
++    private ItemStack[] sentItems = new ItemStack[0];
++    private BukkitTask isScheduled = null;
++
++    public MultiPaperEnderChestHandler(ServerPlayer player) {
++        this.player = player;
++    }
++
++    @Override
++    public void containerChanged(Container container) {
++        if (container.getContainerSize() != sentItems.length) {
++            sentItems = new ItemStack[container.getContainerSize()];
++        }
++        if (!player.didPlayerJoinEvent) {
++            if (isScheduled == null && broadcastChanges && player.server.getPlayerList().getActivePlayer(player.getUUID()) == player) {
++                // Wait till they join to broadcast changes
++                isScheduled = ((CraftScheduler) Bukkit.getScheduler()).scheduleInternalTask(() -> {
++                    isScheduled = null;
++                    containerChanged(container);
++                }, 1, "MultiPaperEnderChestHandler-containerChanged");
++            }
++            return;
++        }
++        isScheduled = null;
++        CompoundTag itemsRoot = new CompoundTag();
++        ListTag items = new ListTag();
++        for (int i = 0; i < sentItems.length; i++) {
++            ItemStack item = container.getItem(i);
++            if (!item.equals(sentItems[i])) {
++                sentItems[i] = item.copy();
++                if (broadcastChanges) {
++                    CompoundTag itemToSend = new CompoundTag();
++                    itemToSend.putInt("Slot", i);
++                    item.save(itemToSend);
++                    items.add(itemToSend);
++                }
++            }
++        }
++        if (!items.isEmpty()) {
++            itemsRoot.put("items", items);
++            MultiPaper.broadcastPacketToExternalServers(new PlayerInventoryUpdatePacket(player, "enderchest", itemsRoot));
++        }
++    }
++
++    public static void sendFullEnderChestUpdate(ServerPlayer player, ExternalServerConnection... connections) {
++        CompoundTag itemsRoot = new CompoundTag();
++        ListTag items = new ListTag();
++        for (int i = 0; i < player.getEnderChestInventory().getContainerSize(); i++) {
++            ItemStack item = player.getEnderChestInventory().getItem(i);
++            CompoundTag itemToSend = new CompoundTag();
++            itemToSend.putInt("Slot", i);
++            item.save(itemToSend);
++            items.add(itemToSend);
++        }
++        itemsRoot.put("items", items);
++        for (ExternalServerConnection connection : connections) {
++            connection.send(new PlayerInventoryUpdatePacket(player, "enderchest", itemsRoot));
++        }
++    }
++
++    public static void updateInventory(ServerPlayer player, int slot, ItemStack item) {
++        broadcastChanges = false;
++        player.getEnderChestInventory().setItem(slot, item);
++        broadcastChanges = true;
++    }
++}
+\ No newline at end of file
+diff --git a/src/main/java/puregero/multipaper/MultiPaperInventoryHandler.java b/src/main/java/puregero/multipaper/MultiPaperInventoryHandler.java
+index 18a7238cc79c06a63dcfbaeb957cc769204f7282..9fc63de5b086682cfe3375e38f216e36c21f84e7 100644
+--- a/src/main/java/puregero/multipaper/MultiPaperInventoryHandler.java
++++ b/src/main/java/puregero/multipaper/MultiPaperInventoryHandler.java
+@@ -121,6 +121,7 @@ public class MultiPaperInventoryHandler {
+             case "items" -> component = player.getInventory().items;
+             case "armor" -> component = player.getInventory().armor;
+             case "offhand" -> component = player.getInventory().offhand;
++            case "enderchest" -> MultiPaperEnderChestHandler.updateInventory(player, slot, item);
+             default -> throw new IllegalArgumentException("Unknown inventory component of " + name);
+         }
+         item.dirty = false;
+diff --git a/src/main/java/puregero/multipaper/externalserverprotocol/PlayerCreatePacket.java b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerCreatePacket.java
+index 2b0edb78ba68aa5d43b9832dddffffeb477a6f9f..1336577a2ee2c677365db61bbf44898a25f127fb 100644
+--- a/src/main/java/puregero/multipaper/externalserverprotocol/PlayerCreatePacket.java
++++ b/src/main/java/puregero/multipaper/externalserverprotocol/PlayerCreatePacket.java
+@@ -10,10 +10,7 @@ import net.minecraft.world.level.GameType;
+ import org.apache.logging.log4j.LogManager;
+ import org.apache.logging.log4j.Logger;
+ import org.bukkit.event.player.PlayerKickEvent;
+-import puregero.multipaper.ExternalPlayer;
+-import puregero.multipaper.ExternalServerConnection;
+-import puregero.multipaper.MultiPaper;
+-import puregero.multipaper.MultiPaperInventoryHandler;
++import puregero.multipaper.*;
+ 
+ import java.net.InetAddress;
+ import java.net.InetSocketAddress;

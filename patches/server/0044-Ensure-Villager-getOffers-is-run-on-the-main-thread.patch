@@ -1,0 +1,35 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 17 Dec 2021 20:07:06 +1000
+Subject: [PATCH] Ensure Villager getOffers is run on the main thread
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/npc/AbstractVillager.java b/src/main/java/net/minecraft/world/entity/npc/AbstractVillager.java
+index 69553b5b3c56998e4ae40876b1458929b335ad5d..00e176f1d783267f38b9dc7a0b74062720cd518b 100644
+--- a/src/main/java/net/minecraft/world/entity/npc/AbstractVillager.java
++++ b/src/main/java/net/minecraft/world/entity/npc/AbstractVillager.java
+@@ -3,6 +3,8 @@ package net.minecraft.world.entity.npc;
+ import com.google.common.collect.Lists;
+ import java.util.ArrayList;
+ import javax.annotation.Nullable;
++
++import io.papermc.paper.util.MCUtil;
+ import net.minecraft.advancements.CriteriaTriggers;
+ import net.minecraft.core.particles.ParticleOptions;
+ import net.minecraft.nbt.CompoundTag;
+@@ -39,6 +41,7 @@ import org.bukkit.Bukkit;
+ import org.bukkit.craftbukkit.inventory.CraftMerchant;
+ import org.bukkit.craftbukkit.inventory.CraftMerchantRecipe;
+ import org.bukkit.event.entity.VillagerAcquireTradeEvent;
++import org.spigotmc.AsyncCatcher;
+ // CraftBukkit end
+ 
+ public abstract class AbstractVillager extends AgeableMob implements InventoryCarrier, Npc, Merchant {
+@@ -125,6 +128,7 @@ public abstract class AbstractVillager extends AgeableMob implements InventoryCa
+     @Override
+     public MerchantOffers getOffers() {
+         if (this.offers == null) {
++            if (!MCUtil.isMainThread()) return new MerchantOffers(); // MultiPaper - don't calculate trade offers async
+             this.offers = new MerchantOffers();
+             this.updateTrades();
+         }

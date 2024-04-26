@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 27 Feb 2022 19:21:10 +1000
+Subject: [PATCH] Don't double save the json lists
+
+
+diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedPlayerList.java b/src/main/java/net/minecraft/server/dedicated/DedicatedPlayerList.java
+index 19f4f91d8c924470d9ccb06a943dc55346d3c88a..8f1536a3927e5643a7bccf3289570f9e3ecd632f 100644
+--- a/src/main/java/net/minecraft/server/dedicated/DedicatedPlayerList.java
++++ b/src/main/java/net/minecraft/server/dedicated/DedicatedPlayerList.java
+@@ -46,13 +46,13 @@ public class DedicatedPlayerList extends PlayerList {
+     @Override
+     public void op(GameProfile profile) {
+         super.op(profile);
+-        this.saveOps();
++        // this.saveOps(); // MultiPaper - don't double save the op list
+     }
+ 
+     @Override
+     public void deop(GameProfile profile) {
+         super.deop(profile);
+-        this.saveOps();
++        // this.saveOps(); // MultiPaper - don't double save the op list
+     }
+ 
+     @Override

@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Sun, 9 Jan 2022 15:50:30 +1000
+Subject: [PATCH] Add temporary debug log for dispensers
+
+
+diff --git a/src/main/java/net/minecraft/world/level/block/DispenserBlock.java b/src/main/java/net/minecraft/world/level/block/DispenserBlock.java
+index 644e64850479cea20a98b8a65503ccf3a34fd32a..2252ab479a72a04cdbdb86f059e729909de864a4 100644
+--- a/src/main/java/net/minecraft/world/level/block/DispenserBlock.java
++++ b/src/main/java/net/minecraft/world/level/block/DispenserBlock.java
+@@ -50,6 +50,7 @@ public class DispenserBlock extends BaseEntityBlock {
+     });
+     private static final int TRIGGER_DURATION = 4;
+     public static boolean eventFired = false; // CraftBukkit
++    // Multipaper Reobf Fix
+ 
+     @Override
+     public MapCodec<? extends DispenserBlock> codec() {

@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Thu, 25 Nov 2021 18:10:39 +1000
+Subject: [PATCH] Paper config changes
+
+
+diff --git a/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java b/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java
+index d3fdf62912d190f8b468b77230a927023c361074..d0da5c215d7d58ca06ca7e45f07af0c91924ff11 100644
+--- a/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java
++++ b/src/main/java/io/papermc/paper/configuration/WorldConfiguration.java
+@@ -424,7 +424,7 @@ public class WorldConfiguration extends ConfigurationPart {
+     public class Spawn extends ConfigurationPart {
+         @RequiresSpigotInitialization(SpawnLoadedRangeInitializer.class)
+         public short keepSpawnLoadedRange = 10;
+-        public boolean keepSpawnLoaded = true;
++        public boolean keepSpawnLoaded = false; // MultiPaper
+         public boolean allowUsingSignsInsideSpawnProtection = false;
+     }
+ 

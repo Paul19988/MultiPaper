@@ -1,0 +1,68 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Fri, 14 Jan 2022 20:27:48 +1000
+Subject: [PATCH] Only create a spawner state when we are actually spawning
+ mobs
+
+
+diff --git a/src/main/java/net/minecraft/server/level/ServerChunkCache.java b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
+index ac4f47888c41f7781d80de86309218f50a27be6a..e611bba7c0e9cb4ad4e017965301f6df49eee32d 100644
+--- a/src/main/java/net/minecraft/server/level/ServerChunkCache.java
++++ b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
+@@ -45,6 +45,7 @@ import net.minecraft.world.level.entity.ChunkStatusUpdateListener;
+ import net.minecraft.world.level.levelgen.RandomState;
+ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+ import net.minecraft.world.level.storage.DimensionDataStorage;
++import net.minecraft.world.level.storage.LevelData;
+ import net.minecraft.world.level.storage.LevelStorageSource;
+ import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet; // Paper
+ import puregero.multipaper.MultiPaper;
+@@ -525,7 +526,8 @@ public class ServerChunkCache extends ChunkSource {
+                 int k = this.distanceManager.getNaturalSpawnChunkCount();
+                 // Paper start - Optional per player mob spawns
+                 int naturalSpawnChunkCount = k;
+-                NaturalSpawner.SpawnState spawnercreature_d; // moved down
++            boolean flag2 = this.level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) && !this.level.players().isEmpty() && shouldSpawnCreaturesThisTick(); // CraftBukkit // MultiPaper - moved up and added shouldSpawnCreaturesThisTick
++            if (flag2) // MultiPaper
+                 if ((this.spawnFriendlies || this.spawnEnemies) && this.level.paperConfig().entities.spawning.perPlayerMobSpawns) { // don't count mobs when animals and monsters are disabled
+                     if (!gg.pufferfish.pufferfish.PufferfishConfig.enableAsyncMobSpawning) { // Pufferfish - moved down when async processing
+                     // re-set mob counts
+@@ -555,7 +557,7 @@ public class ServerChunkCache extends ChunkSource {
+ 
+                 // this.lastSpawnState = spawnercreature_d; // Pufferfish - this is managed asynchronously
+                 //gameprofilerfiller.popPush("spawnAndTick"); // Purpur
+-                boolean flag = this.level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) && !this.level.players().isEmpty(); // CraftBukkit
++                // boolean flag2 = this.level.getGameRules().getBoolean(GameRules.RULE_DOMOBSPAWNING) && !this.level.players().isEmpty(); // CraftBukkit // Multipaper - moved up
+ 
+                 // Paper start - optimise chunk tick iteration
+                 ChunkMap playerChunkMap = this.chunkMap;
+@@ -655,7 +657,7 @@ public class ServerChunkCache extends ChunkSource {
+                 // this.level.timings.chunkTicks.stopTiming(); // Paper // Purpur
+ 
+                 //gameprofilerfiller.popPush("customSpawners"); // Purpur
+-                if (flag) {
++                if (flag2) {
+                     //try (co.aikar.timings.Timing ignored = this.level.timings.miscMobSpawning.startTiming()) { // Paper - timings // Purpur
+                     this.level.tickCustomSpawners(this.spawnEnemies, this.spawnFriendlies);
+                     //} // Paper - timings // Purpur
+@@ -719,6 +721,20 @@ public class ServerChunkCache extends ChunkSource {
+         // Pufferfish end
+     }
+ 
++    // MultiPaper start
++    private boolean shouldSpawnCreaturesThisTick() {
++        LevelData worlddata = level.getLevelData();
++
++        for (long ticksPerSpawnCategery : level.ticksPerSpawnCategory.values()) {
++            if (ticksPerSpawnCategery != 0L && worlddata.getGameTime() % ticksPerSpawnCategery == 0L) {
++                return true;
++            }
++        }
++
++        return false;
++    }
++    // MultiPaper end
++
+     private void getFullChunk(long pos, Consumer<LevelChunk> chunkConsumer) {
+         ChunkHolder playerchunk = this.getVisibleChunkIfPresent(pos);
+ 

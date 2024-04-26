@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Wed, 13 Apr 2022 16:54:41 +1000
+Subject: [PATCH] Don't compare items if they're the same item
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/player/Player.java b/src/main/java/net/minecraft/world/entity/player/Player.java
+index 3ecd6d04b03e5138c0df31c1171bfb48f5ab4994..328820f70ce4b9a87b09d2cb31c19d9d727ab3e5 100644
+--- a/src/main/java/net/minecraft/world/entity/player/Player.java
++++ b/src/main/java/net/minecraft/world/entity/player/Player.java
+@@ -348,12 +348,12 @@ public abstract class Player extends LivingEntity {
+ 
+         ItemStack itemstack = this.getMainHandItem();
+ 
+-        if (!ItemStack.matches(this.lastItemInMainHand, itemstack)) {
++        if (this.lastItemInMainHand != itemstack && !ItemStack.matches(this.lastItemInMainHand, itemstack)) { // MultiPaper - don't compare items if they're the same item
+             if (!ItemStack.isSameItem(this.lastItemInMainHand, itemstack)) {
+                 this.resetAttackStrengthTicker();
+             }
+ 
+-            this.lastItemInMainHand = itemstack.copy();
++            this.lastItemInMainHand = itemstack; // MultiPaper - don't compare items if they're the same item
+         }
+ 
+         this.turtleHelmetTick();

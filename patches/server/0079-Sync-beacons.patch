@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PureGero <puregero@gmail.com>
+Date: Tue, 1 Feb 2022 00:41:27 +1000
+Subject: [PATCH] Sync beacons
+
+
+diff --git a/src/main/java/net/minecraft/world/level/block/entity/BeaconBlockEntity.java b/src/main/java/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
+index d542db1c5bae09a633a218874050dd265de84aa0..ee4b16de1c446f9ff0d6fda19ac751542c529eb5 100644
+--- a/src/main/java/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
++++ b/src/main/java/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
+@@ -160,6 +160,7 @@ public class BeaconBlockEntity extends BlockEntity implements MenuProvider, Name
+                         BeaconBlockEntity.this.secondaryPower = BeaconBlockEntity.filterEffect(BeaconMenu.decodeEffect(value));
+                 }
+ 
++                BeaconBlockEntity.this.setChanged(); // MultiPaper - send this block entity to other server
+             }
+ 
+             @Override
